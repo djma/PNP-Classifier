@@ -1,10 +1,23 @@
 
 
 def loadCharNGram(ngramCount, pnp, n):
+  pnpLength = len(pnp)
+
   # Prepend n-1 whitespaces and eol unique character (^) 
   pnp = (n-1)*' ' + pnp + '^'
-  ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
+  
+  for i in range(pnpLength):
+    ngram = pnp[i:i+n]
+    ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
 
+
+def loadWordLengthNGram(ngramCount, pnp, n):
+  pnp = (n-1)*[0] + map(len, pnp.split()) + [0]
+  wlngLength = len(pnp) - n
+  for i in range(wlngLength):
+    ngram = pnp[i:i+n]
+    ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
+  
 
 
 class NounClassifier:
