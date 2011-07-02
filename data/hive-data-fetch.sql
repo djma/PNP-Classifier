@@ -11,7 +11,7 @@ LIMIT 10000
 -- People
 SELECT dim_active_users.name
 FROM (
-    SELECT userid
+    SELECT *
     FROM tmp_davidma_eigenpoke_weights
     ORDER BY weight DESC
     LIMIT 10000
@@ -21,9 +21,18 @@ JOIN dim_active_users
     AND dim_active_users.ds='2011-06-29'
 ;
 
+SELECT name, userid
+FROM dim_active_users
+    WHERE locale = 'en_US'
+    AND country = 'US'
+    AND userid % 100 = 47
+    AND active30day = 1
+    AND ds='2011-06-29'
+ORDER BY userid ASC
+LIMIT 10000
+;
 
 -- Apps
-
 SELECT appid.*, dim_application.application_name
 FROM (
     SELECT *
