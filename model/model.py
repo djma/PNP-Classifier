@@ -4,12 +4,14 @@ from math import log
 #Model Parameters
 N_FOR_CNG = 6
 N_FOR_WLNG = 4
+WORD_LENGTH_NORMALIZATION_CONSTANT = 2.5
 
 
 def loadCharNGram(ngramCount, pnp, n):
   pnpLength = len(pnp)
   # Prepend n-1 whitespaces and eol unique character (^) 
   pnp = (n-1)*' ' + pnp + '^'
+  ngramCount[(n-1)*' '] = ngramCount.setdefault((n-1)*' ', 0) + 1
   for i in range(pnpLength):
     ngram = pnp[i:i+n]
     ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
@@ -51,10 +53,9 @@ def getLogWordProb(ngramCount, word, n):
   return logCumProb
 
 
-
-
 def conditioningContext(ngram):
   return 0.7
+
 
 class NounClassifier:
   def __init__(self):
@@ -86,6 +87,34 @@ class NounClassifier:
     wordLengths = tuple((N_FOR_WLNG-1)*[0] + map(len, pnp.split()) + [0])
     return getLogWordProb(self._wlng[classname], wordLengths, N_FOR_WLNG)
     
+  def getLogCNGProb(self, pnp, classname):
+    # Conditional on the length of the word
+    # Normalized by k/len where k is the word-length normalization constant
+    logCumProb = 0.0
+    pnpPadded = (N_FOR_CNG-1)*' ' + pnp + '^'
+    idx = N_FOR_CNG-1
+    while True:
+      nextidx = pnpPadded.find(' ', idx)
+      wordPadded = pnpPadded[idx-N_FOR_CNG+1:nextidx]
+      wordLength = len(wordPadded) - N_FOR_CNG + 1
+      logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG) -\
+                      log(float(self._wlng[classname][tuple([wordLength])]) / \
+                          float(self._wlng[classname][tuple([0])])))\
+                    * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
+      idx = nextidx+1
+      if nextidx == -1:
+        break;
+    return logCumProb
 
   def classify(self, pnp):
-    return
+    pnp = pnp.strip().lower()
+    mostLikelyClass = ''
+    logLikOfBestClass = float("-inf")
+    for classname in self._cng:
+      logLikOfClass = self.getLogWLNGProb(pnp, classname) + \
+                      self.getLogCNGProb(pnp, classname)
+      if logLikOfBestClass < logLikOfClass:
+        mostLikelyClass = classname
+        logLikOfBestClass = logLikOfClass
+      print (classname, logLikOfClass)
+    return mostLikelyClass
