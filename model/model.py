@@ -1,26 +1,28 @@
 from math import log
 
-
 #Model Parameters
 N_FOR_CNG = 6
 N_FOR_WLNG = 4
 WORD_LENGTH_NORMALIZATION_CONSTANT = 2.5
 
 
+def normalizeString(pnp):
+  pnp = pnp.strip().lower()
+  pnp = ' '.join(pnp.split())
+  return pnp
+
 def loadCharNGram(ngramCount, pnp, n):
-  pnpLength = len(pnp)
-  # Prepend n-1 whitespaces and eol unique character (^) 
-  pnp = (n-1)*' ' + pnp + '^'
-  ngramCount[(n-1)*' '] = ngramCount.setdefault((n-1)*' ', 0) + 1
+  pnpLength = len(pnp) + 1
+  # Prepend n whitespaces and eol unique character (^) 
+  pnp = n*' ' + pnp + '^'
   for i in range(pnpLength):
     ngram = pnp[i:i+n]
     ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
 
 
 def loadWordLengthNGram(ngramCount, pnp, n):
-  pnp = tuple((n-1)*[0] + map(len, pnp.split()) + [0])
-  wlngLength = len(pnp) - n
-  ngramCount[tuple((n-1)*[0])] = ngramCount.setdefault(tuple((n-1)*[0]), 0) + 1
+  pnp = tuple(n*[0] + map(len, pnp.split()) + [0])
+  wlngLength = len(pnp) - n + 1
   for i in range(wlngLength):
     ngram = pnp[i:i+n]
     ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
@@ -72,10 +74,7 @@ class NounClassifier:
       self._wlng[classname] = dict()
     f = open(filename)
     for pnp in f:
-      # Should we filter non utf8 chars for now?
-      # TODO
-
-      pnp = pnp.strip().lower()
+      pnp = normalizeString(pnp)
       for n in range(0, N_FOR_CNG+1):
         loadCharNGram(self._cng[classname], pnp, n)
       for n in range(0, N_FOR_WLNG+1):
@@ -97,17 +96,23 @@ class NounClassifier:
       nextidx = pnpPadded.find(' ', idx)
       wordPadded = pnpPadded[idx-N_FOR_CNG+1:nextidx]
       wordLength = len(wordPadded) - N_FOR_CNG + 1
-      logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG) -\
-                      log(float(self._wlng[classname][tuple([wordLength])]) / \
-                          float(self._wlng[classname][tuple([0])])))\
-                    * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
+      ### TODO DEBUG, gotta fix later (model fails when it has never seen a word of length x)
+      if ((wordLength == 0) or (tuple([wordLength]) not in self._wlng[classname])):
+        logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG))\
+                      * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
+      else:
+        logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG) -\
+                        log(float(self._wlng[classname][tuple([wordLength])]) / \
+                            float(self._wlng[classname][tuple([0])])))\
+                      * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
+      ### DEBUG
       idx = nextidx+1
       if nextidx == -1:
         break;
     return logCumProb
 
   def classify(self, pnp):
-    pnp = pnp.strip().lower()
+    pnp = normalizeString(pnp)
     mostLikelyClass = ''
     logLikOfBestClass = float("-inf")
     for classname in self._cng:
@@ -116,5 +121,4 @@ class NounClassifier:
       if logLikOfBestClass < logLikOfClass:
         mostLikelyClass = classname
         logLikOfBestClass = logLikOfClass
-      print (classname, logLikOfClass)
     return mostLikelyClass
