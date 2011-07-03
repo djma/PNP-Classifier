@@ -28,7 +28,6 @@ def loadWordLengthNGram(ngramCount, pnp, n):
     ngramCount[ngram] = ngramCount.setdefault(ngram, 0) + 1
 
 
-
 def getEmpiricalCondProb(ngramCount, ngram):
   if ngram in ngramCount:
     return float(ngramCount[ngram]) / float(ngramCount[ngram[0:-1]])
@@ -96,16 +95,9 @@ class NounClassifier:
       nextidx = pnpPadded.find(' ', idx)
       wordPadded = pnpPadded[idx-N_FOR_CNG+1:nextidx]
       wordLength = len(wordPadded) - N_FOR_CNG + 1
-      ### TODO DEBUG, gotta fix later (model fails when it has never seen a word of length x)
-      if ((wordLength == 0) or (tuple([wordLength]) not in self._wlng[classname])):
-        logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG))\
-                      * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
-      else:
-        logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG) -\
-                        log(float(self._wlng[classname][tuple([wordLength])]) / \
-                            float(self._wlng[classname][tuple([0])])))\
-                      * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength # Normalization
-      ### DEBUG
+      logCumProb += (getLogWordProb(self._cng[classname], wordPadded, N_FOR_CNG) -\
+                      getSmoothedCondProb(self._wlng, tuple([wordLength])))\
+                    * WORD_LENGTH_NORMALIZATION_CONSTANT / wordLength
       idx = nextidx+1
       if nextidx == -1:
         break;
